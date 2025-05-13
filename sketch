@@ -1,0 +1,65 @@
+#include <LiquidCrystal.h>          //the liquid crystal library contains commands for printing to the display
+
+LiquidCrystal lcd(13, 12, 11, 10, 9, 8);   // tell the RedBoard what pins are connected to the display
+
+int photoresistor = 0;              //this variable will hold a value based on the brightness of the ambient light
+int drops = 0; //this variable will count the amount of times the light level drops "below" baseline
+int drop_err2 = 2; //second formula for toggling
+int toggle = 0; //toggles whether the light has been dimmed or not (0 means the light wasnt dimmed, 1 means the light has been dimmed)
+int spokes = 3; //number of spokes of the rotating object
+unsigned long previousMs = 0; //stores the last time that something happened
+const long interval = 1000; //millisecond interval to track rpm (1000 ms = 1 second)
+float intDrop = 0.0;
+float rpm = 0.0;
+int pr1 = 0;
+
+void setup() {
+  lcd.begin(16, 2);                 //tell the lcd library that we are using a display that is 16 characters wide and 2 characters high
+  lcd.clear();  
+
+  Serial.begin(9600);               //start a serial connection with the computer
+}
+
+void loop() {
+    //read the brightness of the ambient light
+  photoresistor = analogRead(A0);   //set photoresistor to a number between 0 and 1023 based on how bright the ambient light is
+  Serial.println(photoresistor);    //print the value of photoresistor in the serial monitor on the computer
+
+  unsigned long currentMs = millis(); //stores the current time
+
+  lcd.setCursor(5,0);
+
+  if (pr1 < (photoresistor - drop_err2)) {
+    lcd.print("Dim"); //prints that it has been dimmed
+
+    if (toggle == 0) { //if the photoresistor was not just dimmed
+      intDrop += 1.0; //registers that the photoresistor level has just dropped
+    }
+    toggle = 1;
+    
+  } else { //if the photoresistor is detecting it is lit
+    lcd.print("   "); //clears the text saying "dim"
+    toggle = 0; //toggles that the photoresistor is now lit
+  }
+
+  if (currentMs - previousMs >= interval) {
+    rpm = int(1000.0*(60.0/interval)*intDrop/spokes);
+    intDrop = 0;
+    previousMs = currentMs;
+  }
+
+  pr1 = photoresistor;
+
+  lcd.setCursor(0,0);
+  lcd.print("    ");
+  lcd.setCursor(0, 0);              //set the cursor to the 0,0 position (top left corner)
+  lcd.print(photoresistor);       //print hello, world! starting at that position
+
+  lcd.setCursor(0, 1);              //move the cursor to the first space of the bottom row
+  lcd.print(currentMs);       //print the number of seconds that have passed since the last reset
+
+  lcd.setCursor(9,0);
+  lcd.print("    ");
+  lcd.setCursor(9,0);
+  lcd.print(rpm,0);
+}
